@@ -30,6 +30,7 @@ dataframes_outflow <- lapply(file_paths, read.csv)
 ```
 
 ```{r}
+# we select y1 here to pull out origin states
 master_outflow <- do.call(rbind, lapply(dataframes_outflow, function(df) {
   select(df, y1_statefips, y1_countyfips, n2)
 }))
@@ -54,8 +55,9 @@ dataframes_inflow <- lapply(file_paths, read.csv)
 ```
 
 ```{r}
+# we change to y2 here to pull out the destination states and counties
 master_inflow <- do.call(rbind, lapply(dataframes_inflow, function(df) {
-  select(df, y1_statefips, y1_countyfips, n2)
+  select(df, y2_statefips, y2_countyfips, n2)
 }))
 year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
 master_inflow$Year= rep(year, sapply(dataframes_inflow, nrow))
