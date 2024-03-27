@@ -1,0 +1,85 @@
+---
+title: "County Inflow-Outflow Consolidation"
+author: "Bradley Parmer-Lohan"
+date: "2024-03-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+# read in all outflow files
+
+
+file_paths = c("../data_raw/countyoutflow1112.csv",
+"../data_raw/countyoutflow1213.csv",
+"../data_raw/countyoutflow1314.csv",
+"../data_raw/countyoutflow1415.csv",
+"../data_raw/countyoutflow1516.csv",
+"../data_raw/countyoutflow1617.csv",
+"../data_raw/countyoutflow1718.csv",
+"../data_raw/countyoutflow1819.csv",
+"../data_raw/countyoutflow1920.csv",
+"../data_raw/countyoutflow2021.csv")
+dataframes_outflow <- lapply(file_paths, read.csv)
+```
+
+```{r}
+# we select y1 here to pull out origin states
+master_outflow <- do.call(rbind, lapply(dataframes_outflow, function(df) {
+  select(df, y1_statefips, y1_countyfips, n2)
+}))
+year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
+master_outflow$Year= rep(year, sapply(dataframes_outflow, nrow))
+
+```
+
+```{r}
+master_outflow = master_outflow %>% 
+  group_by(y1_statefips, y1_countyfips, Year) %>% 
+  summarise(n2 = sum(n2))
+```
+
+```{r}
+# read in all inflow files
+file_paths = c("../data_raw/countyinflow1112.csv",
+"../data_raw/countyinflow1213.csv",
+"../data_raw/countyinflow1314.csv",
+"../data_raw/countyinflow1415.csv",
+"../data_raw/countyinflow1516.csv",
+"../data_raw/countyinflow1617.csv",
+"../data_raw/countyinflow1718.csv",
+"../data_raw/countyinflow1819.csv",
+"../data_raw/countyinflow1920.csv",
+"../data_raw/countyinflow2021.csv")
+dataframes_inflow <- lapply(file_paths, read.csv)
+```
+
+```{r}
+# we change to y2 here to pull out the destination states and counties
+master_inflow <- do.call(rbind, lapply(dataframes_inflow, function(df) {
+  select(df, y2_statefips, y2_countyfips, n2)
+}))
+year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
+master_inflow$Year= rep(year, sapply(dataframes_inflow, nrow))
+```
+
+```{r}
+master_inflow = master_inflow %>% 
+  group_by(y2_statefips, y2_countyfips, Year) %>% 
+  summarise(n2 = sum(n2))
+```
+
+```{r}
+# Merge master_outflow and master_inflow dataframes
+merged_data <- inner_join(master_inflow, master_outflow, by = c("y2_statefips" = "y1_statefips", "y2_countyfips" = "y1_countyfips", "Year"))
+merged_data = merged_data %>% 
+  rename(c(Inflow = n2.x, Outflow = n2.y))
+```
