@@ -1,0 +1,62 @@
+---
+title: "County Inflow-Outflow Consolidation"
+author: "Bradley Parmer-Lohan"
+date: "2024-03-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+```
+
+
+```{r}
+# read in all outflow files
+file_paths = c("E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1112.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1213.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1314.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1415.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1516.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1617.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1718.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1819.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow1920.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyoutflow2021.csv")
+dataframes_outflow <- lapply(file_paths, read.csv)
+```
+
+```{r}
+master_outflow <- do.call(rbind, lapply(dataframes_outflow, function(df) {
+  select(df, y1_statefips, y1_countyfips, n2)
+}))
+year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
+master_outflow$Year= rep(year, sapply(dataframes_outflow, nrow))
+```
+
+
+```{r}
+# read in all inflow files
+file_paths = c("E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1112.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1213.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1314.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1415.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1516.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1617.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1718.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1819.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow1920.csv",
+"E:/Non-Onedrive Docs/Hilbig Research Assistant/Data/countyinflow2021.csv")
+dataframes_inflow <- lapply(file_paths, read.csv)
+```
+
+```{r}
+master_inflow <- do.call(rbind, lapply(dataframes_inflow, function(df) {
+  select(df, y1_statefips, y1_countyfips, n2)
+}))
+year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
+master_inflow$Year= rep(year, sapply(dataframes_inflow, nrow))
+```
