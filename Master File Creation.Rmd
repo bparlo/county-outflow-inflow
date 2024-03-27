@@ -38,6 +38,11 @@ year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
 master_outflow$Year= rep(year, sapply(dataframes_outflow, nrow))
 ```
 
+```{r}
+master_outflow = master_outflow %>% 
+  group_by(y1_statefips, y1_countyfips, Year) %>% 
+  summarise(n2 = sum(n2))
+```
 
 ```{r}
 # read in all inflow files
@@ -61,4 +66,17 @@ master_inflow <- do.call(rbind, lapply(dataframes_inflow, function(df) {
 }))
 year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
 master_inflow$Year= rep(year, sapply(dataframes_inflow, nrow))
+```
+
+```{r}
+master_inflow = master_inflow %>% 
+  group_by(y2_statefips, y2_countyfips, Year) %>% 
+  summarise(n2 = sum(n2))
+```
+
+```{r}
+# Merge master_outflow and master_inflow dataframes
+merged_data <- inner_join(master_inflow, master_outflow, by = c("y2_statefips" = "y1_statefips", "y2_countyfips" = "y1_countyfips", "Year"))
+merged_data = merged_data %>% 
+  rename(c(Inflow = n2.x, Outflow = n2.y))
 ```
