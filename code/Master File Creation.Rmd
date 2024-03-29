@@ -9,15 +9,14 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-library(tidyverse)
-```
 
+```{r}
+library(dplyr)
+library(stringr)
+```
 
 ```{r}
 # read in all outflow files
-
-
 file_paths = c("../data_raw/countyoutflow1112.csv",
 "../data_raw/countyoutflow1213.csv",
 "../data_raw/countyoutflow1314.csv",
@@ -34,18 +33,36 @@ dataframes_outflow <- lapply(file_paths, read.csv)
 ```{r}
 # we select y1 here to pull out origin states
 master_outflow <- do.call(rbind, lapply(dataframes_outflow, function(df) {
-  select(df, y1_statefips, y1_countyfips, n2)
+  select(df, y1_statefips, y1_countyfips, y2_countyname, n2)
 }))
 year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
 master_outflow$Year= rep(year, sapply(dataframes_outflow, nrow))
-
 ```
 
 ```{r}
+# with this data, we group by year to get around the countyname formatting change that started in 2018
+outflow_year = master_outflow %>% 
+  filter(
+    case_when(
+    # no need for string detect here, as there is a row with the entire migration us and foreign, not specific to any county
+    between(Year, 2011, 2017) ~ y2_countyname == 'Total Migration-US and Foreign',
+    
+    # using string detect for partial strings, as each entry is appended with the name of the specific county that total is from
+    between(Year, 2018, 2020) ~ str_detect(y2_countyname, 'Total Migration-US and Foreign'))) %>% 
+  group_by(Year) %>% 
+  # group by year and sum to consolidate rows from years 2018-2020
+  summarise(total_n2 = sum(n2))
+
+# keeping the original format of data, but with a row for every single county from 2018 onwards
 master_outflow = master_outflow %>% 
-  group_by(y1_statefips, y1_countyfips, Year) %>% 
-  summarise(n2 = sum(n2))
+  filter(
+    case_when(
+    between(Year, 2011, 2017) ~ y2_countyname == 'Total Migration-US and Foreign',
+    
+    between(Year, 2018, 2020) ~ str_detect(y2_countyname, 'Total Migration-US and Foreign'))) %>% 
+  group_by(y1_statefips, y1_countyfips)
 ```
+
 
 ```{r}
 # read in all inflow files
@@ -65,21 +82,51 @@ dataframes_inflow <- lapply(file_paths, read.csv)
 ```{r}
 # we change to y2 here to pull out the destination states and counties
 master_inflow <- do.call(rbind, lapply(dataframes_inflow, function(df) {
-  select(df, y2_statefips, y2_countyfips, n2)
+  select(df, y2_statefips, y2_countyfips, y1_countyname, n2)
 }))
 year = c(2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020)
 master_inflow$Year= rep(year, sapply(dataframes_inflow, nrow))
 ```
 
+
 ```{r}
+# with this data, we group by year to get around the countyname formatting change that started in 2018
+inflow_year = master_inflow %>% 
+  filter(
+    case_when(
+    # no need for string detect here, as there is a row with the entire migration us and foreign, not specific to any county
+    between(Year, 2011, 2017) ~ y1_countyname == 'Total Migration-US and Foreign',
+    # using string detect for partial strings, as each entry is appended with the name of the specific county that total is from
+    between(Year, 2018, 2020) ~ str_detect(y1_countyname, 'Total Migration-US and Foreign'))) %>% 
+  group_by(Year) %>%  
+  # group by year and sum to consolidate rows from years 2018-2020
+  summarise(total_n2 = sum(n2))
+
+# keeping the original format of data, but with a row for every single county from 2018 onwards
 master_inflow = master_inflow %>% 
-  group_by(y2_statefips, y2_countyfips, Year) %>% 
-  summarise(n2 = sum(n2))
+  filter(
+    case_when(
+    between(Year, 2011, 2017) ~ y1_countyname == 'Total Migration-US and Foreign',
+    
+    between(Year, 2018, 2020) ~ str_detect(y1_countyname, 'Total Migration-US and Foreign'))) %>% 
+  group_by(y2_statefips, y2_countyfips)
 ```
 
 ```{r}
+# merging data for just the year
+merged_year = inner_join(inflow_year, outflow_year, by = "Year")
+merged_year = merged_year %>% 
+  rename(c(Inflow = total_n2.x, Outflow = total_n2.y))
+
+```
+
+
+```{r}
 # Merge master_outflow and master_inflow dataframes
-merged_data <- inner_join(master_inflow, master_outflow, by = c("y2_statefips" = "y1_statefips", "y2_countyfips" = "y1_countyfips", "Year"))
+
+merged_data <- inner_join(master_inflow, master_outflow, by = c("y2_statefips" = "y1_statefips", "y2_countyfips" = "y1_countyfips","Year", "y1_countyname" = "y2_countyname"))
 merged_data = merged_data %>% 
   rename(c(Inflow = n2.x, Outflow = n2.y))
 ```
+
+
