@@ -368,4 +368,11 @@ inflow_join <- inflow_join %>%
       0
     )
   )
+
+# sets NA values in data issue columns to equal 0 -- these were being caused by NA values in the percentage change columns for the first year of any county
+outflow_join = outflow_join %>% 
+  mutate(data_issue_outflow = replace(data_issue_outflow, is.na(data_issue_outflow), 0))
+
+inflow_join = inflow_join %>% 
+  mutate(data_issue_inflow = replace(data_issue_inflow, is.na(data_issue_inflow), 0))
 ```
