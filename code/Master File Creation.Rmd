@@ -281,3 +281,91 @@ sds = inflow_county_year %>%
 print(sds)
 ```
 
+```{r}
+# read in our county-level population file and set proper string padding
+population = readRDS("../data_raw/pop_data.RDS")
+population$FIPS = str_pad(population$FIPS, width = 5, side = "left", pad = "0")
+```
+
+```{r}
+# split out the FIPS code into respective state and county FIPS
+population = population %>% 
+  mutate(
+    statefips = substr(FIPS, 1, 2),
+    countyfips = substr(FIPS, 3, nchar(FIPS))
+  )
+```
+
+```{r}
+outflow_county_year$y1_statefips <- as.character(outflow_county_year$y1_statefips)
+outflow_county_year$y1_countyfips <- as.character(outflow_county_year$y1_countyfips)
+# join our general outflow_county_year file with the population numbers
+outflow_join = outflow_county_year %>% 
+  inner_join(population, by = c("Year" = "year", "y1_statefips" = "statefips", "y1_countyfips" = "countyfips")) %>% 
+  select(Year, y1_statefips, y1_countyfips, n2, pop_estimate)
+```
+
+```{r}
+# calculate outflow per capita
+outflow_join = outflow_join %>% 
+  mutate(outflow_per_Capita = n2/ pop_estimate)
+```
+
+```{r}
+# order the data properly for our year over year calculations
+outflow_join <- outflow_join %>%
+  arrange(y1_statefips, y1_countyfips, Year)
+
+# Calculate the year-over-year percentage change
+outflow_join <- outflow_join %>%
+  group_by(y1_statefips, y1_countyfips) %>%
+  mutate(percentage_change = (outflow_per_Capita - lag(outflow_per_Capita)) / lag(outflow_per_Capita) * 100)
+
+```
+
+
+```{r}
+inflow_county_year$y2_statefips <- as.character(inflow_county_year$y2_statefips)
+inflow_county_year$y2_countyfips <- as.character(inflow_county_year$y2_countyfips)
+
+# join in population data
+inflow_join = inflow_county_year %>% 
+  inner_join(population, by = c("Year" = "year", "y2_statefips" = "statefips", "y2_countyfips" = "countyfips")) %>% 
+  select(Year, y2_statefips, y2_countyfips, n2, pop_estimate)
+
+# compute per capita data
+inflow_join = inflow_join %>% 
+  mutate(inflow_per_Capita = n2/ pop_estimate)
+
+inflow_join <- inflow_join %>%
+  arrange(y2_statefips, y2_countyfips, Year)
+
+# Calculate the year-over-year percentage change
+inflow_join <- inflow_join %>%
+  group_by(y2_statefips, y2_countyfips) %>%
+  mutate(percentage_change = (inflow_per_Capita - lag(inflow_per_Capita)) / lag(inflow_per_Capita) * 100)
+```
+
+
+```{r}
+# this chunk will create our new error detection column by applying the ifelse statement
+outflow_join <- outflow_join %>%
+  group_by(y1_statefips, y1_countyfips) %>%
+  mutate(
+    data_issue_outflow = ifelse(
+      n2 == -1 | percentage_change > 500 | percentage_change < -1000,
+      1,
+      0
+    )
+  )
+
+inflow_join <- inflow_join %>%
+  group_by(y2_statefips, y2_countyfips) %>%
+  mutate(
+    data_issue_inflow = ifelse(
+      n2 == -1 | percentage_change > 500 | percentage_change < -1000,
+      1,
+      0
+    )
+  )
+```
